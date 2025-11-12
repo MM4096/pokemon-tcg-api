@@ -15,6 +15,9 @@ export default function Home() {
 		<section className="h-screen snap-start flex items-center justify-center bg-base-200 flex-col5">
 			<h2>Usage</h2>
 			<h3>This area is under construction :(</h3>
+			<br/>
+			<br/>
+			<p>Only the latest card is retrieved when using <code>/collection</code></p>
 		</section>
 	</main>);
 }
