@@ -15,15 +15,15 @@ export type PokemonAbility = {
 }
 
 export type PokemonData = {
-	pokemonType: string,
-	hp: string,
-	stage: string,
+	pokemonType?: string,
+	hp?: string,
+	stage?: string,
 	evolvesFrom?: string,
-	attacks: PokemonAttack[],
-	abilities: PokemonAbility[],
-	weakness: string,
-	resistance: string,
-	retreatCost: number,
+	attacks?: PokemonAttack[],
+	abilities?: PokemonAbility[],
+	weakness?: string,
+	resistance?: string,
+	retreatCost?: number,
 }
 
 export type Card = {
@@ -46,38 +46,7 @@ export type CollapsedCard = Card & {
 
 // cards that Limitless doesn't render properly
 export const BROKEN_CARDS: Record<string, Card> = {
-	"BUS-51": {
-		name: "Duskull",
-		type: "Pokémon",
-		subtype: "Basic",
-		additionalRules: [],
-		imageURL: "https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/BUS/BUS_051_R_EN_LG.png",
-		categories: [],
-		pokemonData: {
-			pokemonType: "Psychic",
-			hp: "",
-			stage: "Basic",
-			evolvesFrom: "",
-			attacks: [
-				{
-					"name": "Dark Guidance",
-					"damage": "",
-					"cost": "P",
-					"effect": "Put a Basic Pokémon from your discard pile onto your Bench.",
-				},
-				{
-					"name": "Spooky Shot",
-					"damage": "20",
-					"cost": "PC",
-					"effect": "",
-				}
-			],
-			abilities: [],
-			weakness: "Darkness",
-			resistance: "Fighting",
-			retreatCost: 1,
-		}
-	}
+
 }
 
 export async function getCard(url: string, cardId: string | number): Promise<Card> {
@@ -88,17 +57,7 @@ export async function getCard(url: string, cardId: string | number): Promise<Car
 
 	const c = await getJqueryOfSite(url);
 
-	const pokemonData: PokemonData = {
-		pokemonType: "",
-		hp: "",
-		stage: "",
-		evolvesFrom: "",
-		attacks: [],
-		abilities: [],
-		weakness: "",
-		resistance: "",
-		retreatCost: 0,
-	};
+	const pokemonData: PokemonData = {};
 	let cardType = "";
 	let cardSubtype = "";
 	let cardText = "";
@@ -146,46 +105,9 @@ export async function getCard(url: string, cardId: string | number): Promise<Car
 		pokemonData.hp = typeSplit[1].replace(/ ?HP/g, "");
 	}
 
+	const cs = c(".card-text-section").eq(1);
 	// get text
 	if (isPokemon) {
-		const cs = c(".card-text-section").eq(1);
-		cs.children(".card-text-ability").each((idx: number, el: Element) => {
-			const elem = c(el);
-			// ignore the leading `Ability: `
-			let ability = elem.children(".card-text-ability-info").text().trim();
-			if (ability.startsWith("Ability: ")) {
-				ability = ability.split("\n")[1].trim();
-			}
-			const abilityText = elem.children(".card-text-ability-effect").text().trim().replaceAll("[", "{").replaceAll("]", "}");
-			pokemonData.abilities.push({
-				name: ability,
-				effect: abilityText,
-			});
-		});
-		cs.children(".card-text-attack").each((idx: number, el: Element) => {
-			const elem = c(el);
-			const attackInfo: string[] = elem.children(".card-text-attack-info").text().trim().split("\n");
-			const attackEffect = elem.children(".card-text-attack-effect").text().trim().replaceAll("[", "{").replaceAll("]", "}");
-			const attackCost = attackInfo[0].trim();
-			// check whether damage exists
-
-			let attackName = attackInfo[1].trim();
-			let attackDamage = "";
-			const split = attackName.split(" ");
-			if (/[0-9]+[+-]?/.test(split[split.length - 1])) {
-				// last elem is damage
-				attackDamage = split.pop() || "";
-			}
-			attackName = split.join(" ");
-
-			pokemonData["attacks"].push({
-				"name": attackName,
-				"damage": attackDamage,
-				"cost": attackCost,
-				"effect": attackEffect,
-			});
-		});
-
 		try {
 			const wrrText = c(".card-text-wrr").text().trim().split("\n");
 			const weakness = wrrText[0].split(":")[1].trim();
@@ -201,8 +123,66 @@ export async function getCard(url: string, cardId: string | number): Promise<Car
 		}
 	} else {
 		// second section contains text
-		cardText = c(".card-text-section").eq(1).text().trim();
+		cardText = cs
+			// remove potential attacks
+			.clone()
+			.find(".card-text-attack")
+			.remove()
+			.end()
+			// get text
+			.text().trim();
 	}
+	//region get attacks/abilities
+	cs.children(".card-text-ability").each((idx: number, el: Element) => {
+		const elem = c(el);
+		// ignore the leading `Ability: `
+		let ability = elem.children(".card-text-ability-info").text().trim();
+		if (ability.startsWith("Ability: ")) {
+			ability = ability.split("\n")[1].trim();
+		}
+		const abilityText = elem.children(".card-text-ability-effect").text().trim().replaceAll("[", "{").replaceAll("]", "}");
+		if (pokemonData.abilities) {
+			pokemonData.abilities.push({
+				name: ability,
+				effect: abilityText,
+			});
+		} else {
+			pokemonData.abilities = [{name: ability, effect: abilityText}];
+		}
+	});
+	cs.children(".card-text-attack").each((idx: number, el: Element) => {
+		const elem = c(el);
+		const attackInfo: string[] = elem.children(".card-text-attack-info").text().trim().split("\n");
+		const attackEffect = elem.children(".card-text-attack-effect").text().trim().replaceAll("[", "{").replaceAll("]", "}");
+		const attackCost = attackInfo[0].trim();
+		// check whether damage exists
+
+		let attackName = attackInfo[1].trim();
+		let attackDamage = "";
+		const split = attackName.split(" ");
+		if (/[0-9]+[+-]?/.test(split[split.length - 1])) {
+			// last elem is damage
+			attackDamage = split.pop() || "";
+		}
+		attackName = split.join(" ");
+
+		if (pokemonData.attacks) {
+			pokemonData.attacks.push({
+				name: attackName,
+				damage: attackDamage,
+				cost: attackCost,
+				effect: attackEffect,
+			});
+		} else {
+			pokemonData.attacks = [{
+				name: attackName,
+				damage: attackDamage,
+				cost: attackCost,
+				effect: attackEffect,
+			}]
+		}
+	});
+	//endregion
 
 	const cardImage = c(".card-image img").attr("src");
 
@@ -218,6 +198,9 @@ export async function getCard(url: string, cardId: string | number): Promise<Car
 		card = {...card, pokemonData: pokemonData};
 	} else {
 		card = {...card, text: cardText};
+		if (JSON.stringify({}) != JSON.stringify(pokemonData)) {
+			card = {...card, pokemonData: pokemonData};
+		}
 	}
 	if (cardAdditionalTypes.hasOwnProperty(cardId)) {
 		card.categories = cardAdditionalTypes[cardId];

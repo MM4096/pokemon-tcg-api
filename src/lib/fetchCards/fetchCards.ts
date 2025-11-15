@@ -6,19 +6,32 @@ import {getJqueryOfSite} from "@/lib/fetchCards/crawler";
 import {Card, getCard} from "@/lib/fetchCards/card";
 import {getSavedData, SAVED_DATA, saveData} from "@/lib/fetchCards/cachedData";
 import path from "node:path";
+import {db} from "@/lib/api/cardDb";
 
 
-export async function fetchCards() {
+export async function fetchCards(getAllCards: boolean = false) {
 	getSavedData();
 	await populateCardAdditionalTypes();
 
 	// get sets
 	const j = await getJqueryOfSite("https://limitlesstcg.com/cards");
-	const sets: string[] = [];
+	let sets: string[] = [];
 	j("table a > .code").each((idx: number, el: Element) => {
 		const setCode = j(el).text();
 		sets.push(setCode);
 	});
+
+	if (!getAllCards) {
+		const fetchedSets: string[] = Object.keys(db);
+		const newSets: string[] = [];
+		sets.forEach((set) => {
+			if (fetchedSets.indexOf(set) === -1) {
+				newSets.push(set);
+			}
+		})
+		sets = newSets;
+		console.log(`Only fetching new sets: ${sets.join(", ")}`)
+	}
 
 	// check whether last session crashed and start from there
 	let startAt = SAVED_DATA["crashPoint"];
@@ -59,7 +72,7 @@ export async function fetchCards() {
 				// looping over each card
 				cardData[sets[setIdx]][id] = await getCard(`https://limitlesstcg.com${url}`, card_id);
 
-				await setTimeout(250);
+				// await setTimeout(100);
 				cardIdx++;
 			}
 
@@ -77,5 +90,3 @@ export async function fetchCards() {
 	saveData();
 	fs.writeFileSync(path.join(process.cwd(), "public", "cardData.json"), JSON.stringify(cardData, null, 2));
 }
-
-// fetchCards().then()

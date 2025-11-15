@@ -14,7 +14,7 @@ export type QueryOptions = {
 //region init db
 export const cardDb: Array<CollapsedCard> = [];
 
-let db: Record<string, Record<string, Card>> = JSON.parse(fs.readFileSync(path.join(process.cwd(), "public", "cardData.json"), "utf-8"));
+export const db: Record<string, Record<string, Card>> = JSON.parse(fs.readFileSync(path.join(process.cwd(), "public", "cardData.json"), "utf-8"));
 for (const set of Object.keys(db)) {
 	for (const id of Object.keys(db[set] || {})) {
 		cardDb.push({
@@ -24,7 +24,6 @@ for (const set of Object.keys(db)) {
 		})
 	}
 }
-db = {};
 //endregion
 
 function compareValues(a: unknown, b: unknown): boolean {
