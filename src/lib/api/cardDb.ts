@@ -1,6 +1,7 @@
 import {Card, CollapsedCard} from "@/lib/fetchCards/card";
 import * as fs from "fs";
 import path from "node:path";
+import {compareStrings} from "@/lib/lib";
 
 export type QueryOptions = {
 	setId?: string,
@@ -28,7 +29,7 @@ for (const set of Object.keys(db)) {
 
 function compareValues(a: unknown, b: unknown): boolean {
 	if (typeof a === "string" && typeof b === "string") {
-		return a.toLowerCase() === b.toLowerCase();
+		return compareStrings(a, b);
 	}
 
 	return a === b;
